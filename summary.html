@@ -1,1 +1,104 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>סיכום משחק – קריאת תווים</title>
 
+  <link rel="stylesheet" href="summary.css" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">𝄢</div>
+        <div>
+          <h1>סיכום משחק</h1>
+          <p class="sub">מפתח פה · סטטיסטיקות סשן</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <a class="btn btn-ghost" href="index.html">שחק/י שוב</a>
+        <button id="resetBtn" class="btn btn-ghost" type="button" title="מוחק את הסשן האחרון">איפוס סשן</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="hero">
+        <div class="heroTitle">
+          <div class="kicker">הסשן האחרון</div>
+          <div class="big" id="headline">טוען…</div>
+          <div class="metaRow">
+            <div class="pill">נענו נכון: <span id="correctCount">0</span></div>
+            <div class="pill">ויתורים: <span id="skipCount">0</span></div>
+            <div class="pill">טעויות: <span id="wrongCount">0</span></div>
+          </div>
+        </div>
+
+        <div class="heroStats">
+          <div class="stat">
+            <div class="statLabel">זמן תגובה ממוצע</div>
+            <div class="statValue" id="avgTime">—</div>
+          </div>
+          <div class="stat">
+            <div class="statLabel">הכי מהיר</div>
+            <div class="statValue" id="fastest">—</div>
+          </div>
+          <div class="stat">
+            <div class="statLabel">הכי איטי</div>
+            <div class="statValue" id="slowest">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>פירוט ביצועים</h2>
+          <div class="rows">
+            <div class="row">
+              <div class="label">מספר שאלות (כולל ויתורים)</div>
+              <div class="value" id="totalQ">0</div>
+            </div>
+            <div class="row">
+              <div class="label">דיוק (נכון מתוך לא-ויתורים)</div>
+              <div class="value" id="accuracy">—</div>
+            </div>
+            <div class="row">
+              <div class="label">משך סשן</div>
+              <div class="value" id="duration">—</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>מהירות לפי צליל</h2>
+          <p class="panelSub">ממוצע זמן תגובה לכל צליל שהופיע (רק תשובות נכונות).</p>
+          <div id="byNote" class="table"></div>
+        </section>
+
+        <section class="panel panelWide">
+          <h2>ציר זמן</h2>
+          <p class="panelSub">רצף האירועים בסשן (נכון/ויתור), עם זמני תגובה.</p>
+          <div id="timeline" class="timeline"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="empty" class="empty hidden">
+      <div class="emptyCard">
+        <div class="emptyIcon">🎻</div>
+        <h2>אין סשן אחרון להצגה</h2>
+        <p>נראה שלא שמור סיכום עדיין. חזור/י למשחק ושחק/י קצת 🙂</p>
+        <a class="btn btn-primary" href="index.html">לחזרה למשחק</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="summary.js"></script>
+</body>
+</html>
