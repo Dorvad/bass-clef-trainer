@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>הגדרות משחק – קריאת תווים</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="settings.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">𝄢</div>
+        <div>
+          <h1>הגדרות משחק</h1>
+          <p class="sub">התאמה אישית של צלילים ותצוגה</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <a class="btn btn-ghost" href="index.html">חזרה למשחק</a>
+        <a class="btn btn-ghost" href="summary.html">לסיכום האחרון</a>
+      </div>
+    </header>
+
+    <section class="card settings-card">
+      <div class="settings">
+        <div class="settings-section">
+          <h2>צליל אוטומטי</h2>
+          <p class="section-sub">נגן צליל בתחילת כל שאלה.</p>
+          <label class="switch">
+            <input id="soundToggle" type="checkbox" />
+            <span class="slider"></span>
+            <span class="switch-text">הפעל/כבה צליל אוטומטי</span>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h2>סינון תווים</h2>
+          <p class="section-sub">בחר/י אילו סוגי סימונים יופיעו במשחק.</p>
+          <div class="checklist">
+            <label class="check-item">
+              <input id="filterNatural" type="checkbox" />
+              <span>טבעי</span>
+            </label>
+            <label class="check-item">
+              <input id="filterFlat" type="checkbox" />
+              <span>במול (♭)</span>
+            </label>
+            <label class="check-item">
+              <input id="filterSharp" type="checkbox" />
+              <span>דיאז (♯)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>טיימר</h2>
+          <p class="section-sub">הצג/י טיימר לשאלה הנוכחית במהלך המשחק.</p>
+          <label class="switch">
+            <input id="timerToggle" type="checkbox" />
+            <span class="slider"></span>
+            <span class="switch-text">הצג טיימר בזמן משחק</span>
+          </label>
+        </div>
+
+        <div class="save-status" id="saveStatus" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="settings.js"></script>
+</body>
+</html>

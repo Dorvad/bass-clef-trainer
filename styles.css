@@ -178,6 +178,12 @@ h1{
   font-size: 14px;
 }
 
+.timer{
+  font-variant-numeric: tabular-nums;
+}
+
+.hidden{ display:none; }
+
 .hint{
   margin: 10px 0 0;
   color: var(--muted2);
@@ -276,6 +282,23 @@ h1{
 }
 
 /* מובייל */
+@media (max-width: 760px){
+  .top{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .brand{
+    width: 100%;
+  }
+  .controls{
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .controls .switch{
+    flex: 1 1 100%;
+  }
+}
+
 @media (max-width: 520px){
   h1{font-size: 22px}
   .logo{width:48px;height:48px}
