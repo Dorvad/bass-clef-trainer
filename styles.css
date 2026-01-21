@@ -1,26 +1,27 @@
 :root{
-  --bg: #0b1220;
-  --card: rgba(255,255,255,0.08);
-  --card2: rgba(255,255,255,0.10);
-  --ink: rgba(255,255,255,0.92);
-  --muted: rgba(255,255,255,0.70);
-  --muted2: rgba(255,255,255,0.55);
-  --border: rgba(255,255,255,0.14);
-  --accent: #7dd3fc;
-  --good: #34d399;
-  --bad: #fb7185;
-  --shadow: 0 18px 60px rgba(0,0,0,0.45);
+  --bg: #1a100c;
+  --card: rgba(255,245,230,0.08);
+  --card2: rgba(255,238,214,0.16);
+  --ink: rgba(255,250,242,0.94);
+  --muted: rgba(255,237,214,0.72);
+  --muted2: rgba(255,225,196,0.6);
+  --border: rgba(255,226,188,0.22);
+  --accent: #f2b880;
+  --good: #88d4a3;
+  --bad: #f09aa5;
+  --shadow: 0 24px 60px rgba(8,4,2,0.55);
+  --glow: rgba(242,184,128,0.35);
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;
-  background: radial-gradient(1200px 600px at 70% 10%, rgba(125,211,252,0.22), transparent 60%),
-              radial-gradient(900px 500px at 20% 70%, rgba(52,211,153,0.16), transparent 55%),
+  background: radial-gradient(1200px 600px at 70% 10%, rgba(242,184,128,0.18), transparent 60%),
+              radial-gradient(900px 500px at 20% 70%, rgba(240,154,165,0.14), transparent 55%),
               var(--bg);
   color: var(--ink);
-  font-family: "Assistant","Rubik",system-ui,Arial;
+  font-family: "Cormorant Garamond","Times New Roman",serif;
 }
 
 .wrap{
@@ -48,16 +49,17 @@ body{
   width:54px; height:54px;
   display:grid; place-items:center;
   border-radius: 14px;
-  background: rgba(255,255,255,0.10);
+  background: rgba(255,232,201,0.12);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  font-size: 26px;
+  font-size: 28px;
 }
 
 h1{
   margin:0;
-  font-size: 22px;
-  letter-spacing: 0.2px;
+  font-family: "Playfair Display","Cormorant Garamond",serif;
+  font-size: 26px;
+  letter-spacing: 0.4px;
 }
 
 .sub{
@@ -69,9 +71,9 @@ h1{
 .controls{display:flex; gap:10px; flex-wrap:wrap}
 
 .card{
-  background: linear-gradient(180deg, var(--card2), var(--card));
+  background: linear-gradient(180deg, rgba(255,234,205,0.18), var(--card));
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 22px;
   box-shadow: var(--shadow);
   overflow:hidden;
 }
@@ -95,6 +97,7 @@ h1{
   color: var(--muted);
   font-size: 14px;
   margin: 6px 0 10px;
+  letter-spacing: 0.3px;
 }
 
 .row{
@@ -108,43 +111,45 @@ h1{
   flex: 1 1 280px;
   min-width: 240px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.24);
+  background: rgba(30,16,10,0.6);
   color: var(--ink);
   outline: none;
   font-size: 18px;
-  transition: transform 120ms ease, border-color 200ms ease, background 200ms ease;
+  transition: transform 180ms ease, border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
 }
 
 .input:focus{
-  border-color: rgba(125,211,252,0.55);
-  background: rgba(0,0,0,0.18);
+  border-color: rgba(242,184,128,0.6);
+  background: rgba(40,24,14,0.7);
+  box-shadow: 0 0 0 3px rgba(242,184,128,0.18);
 }
 
 .btn{
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,233,205,0.12);
   color: var(--ink);
   cursor:pointer;
   font-size: 16px;
-  transition: transform 120ms ease, background 200ms ease, border-color 200ms ease;
+  transition: transform 160ms ease, background 220ms ease, border-color 200ms ease, box-shadow 200ms ease;
   user-select:none;
+  font-family: "Playfair Display","Cormorant Garamond",serif;
 }
 
-.btn:hover{ background: rgba(255,255,255,0.12); }
+.btn:hover{ background: rgba(255,233,205,0.2); box-shadow: 0 6px 16px rgba(20,12,6,0.35); }
 .btn:active{ transform: translateY(1px) scale(0.99); }
 
 .btn-primary{
-  background: rgba(125,211,252,0.18);
-  border-color: rgba(125,211,252,0.45);
+  background: rgba(242,184,128,0.28);
+  border-color: rgba(242,184,128,0.55);
 }
-.btn-primary:hover{ background: rgba(125,211,252,0.24); }
+.btn-primary:hover{ background: rgba(242,184,128,0.36); }
 
 .btn-ghost{
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,233,205,0.08);
 }
 
 .msg{
@@ -168,7 +173,7 @@ h1{
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,233,205,0.1);
   color: var(--muted);
   font-size: 14px;
 }
@@ -182,30 +187,99 @@ h1{
 /* אנימציות לתו */
 #note{
   transform-origin: 620px 130px;
-  transition: transform 220ms ease, opacity 220ms ease;
+  transition: transform 260ms ease, opacity 220ms ease;
 }
 .note-pop{
-  transform: scale(1.03);
+  transform: scale(1.04) rotate(-1.5deg);
 }
 .note-fade{
   opacity: 0;
-  transform: translateY(6px) scale(0.98);
+  transform: translateY(6px) scale(0.98) rotate(1deg);
 }
 
 /* פלאש הצלחה */
 #successFlash{
-  transition: fill 240ms ease;
+  transition: fill 280ms ease;
 }
 .flash-on{
-  fill: rgba(52,211,153,0.08);
+  fill: rgba(242,184,128,0.16);
+}
+
+/* מתג צליל */
+.switch{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,233,205,0.12);
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.switch input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.slider{
+  width: 46px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(30,16,10,0.6);
+  border: 1px solid rgba(255,226,188,0.4);
+  position: relative;
+  flex-shrink:0;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.slider::after{
+  content:"";
+  position:absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255,244,227,0.92);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  transition: transform 200ms ease, background 200ms ease;
+}
+
+.switch input:checked + .slider{
+  background: rgba(242,184,128,0.45);
+  border-color: rgba(242,184,128,0.7);
+}
+
+.switch input:checked + .slider::after{
+  transform: translateX(-22px);
+  background: rgba(255,252,244,0.98);
+}
+
+.switch-text{
+  font-family: "Playfair Display","Cormorant Garamond",serif;
+}
+
+@media (prefers-reduced-motion: reduce){
+  #note,
+  #successFlash,
+  .btn,
+  .input,
+  .slider,
+  .slider::after{
+    transition: none;
+  }
 }
 
 /* מובייל */
 @media (max-width: 520px){
-  h1{font-size: 20px}
+  h1{font-size: 22px}
   .logo{width:48px;height:48px}
   .input{font-size: 17px}
   .btn{font-size: 15px}
   .staffShell{padding: 12px 12px 0}
 }
-

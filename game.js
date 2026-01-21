@@ -33,6 +33,7 @@ const el = {
   checkBtn: document.getElementById("checkBtn"),
   skipBtn: document.getElementById("skipBtn"),
   endBtn: document.getElementById("endBtn"),
+  soundToggle: document.getElementById("soundToggle"),
   msg: document.getElementById("msg"),
   answeredCount: document.getElementById("answeredCount"),
   wrongCount: document.getElementById("wrongCount"),
@@ -57,6 +58,8 @@ const session = {
 let current = null;          // note object
 let questionStartMs = 0;     // למדידת זמן מענה
 let lock = false;
+let audioContext = null;
+let soundEnabled = false;
 
 // ======== עזרי מוזיקה ========
 
@@ -219,6 +222,59 @@ function acceptableAnswers(note){
   return new Set(a.map(normalizeHebrewInput));
 }
 
+// ======== סאונד ========
+function getAudioContext(){
+  if (!audioContext){
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioContext;
+}
+
+function noteToMidi(note){
+  const baseSemitone = {
+    C: 0,
+    D: 2,
+    E: 4,
+    F: 5,
+    G: 7,
+    A: 9,
+    B: 11,
+  }[note.letter];
+  const accidentalOffset = note.accidental === "sharp" ? 1 : note.accidental === "flat" ? -1 : 0;
+  const midi = (note.octave + 1) * 12 + baseSemitone + accidentalOffset;
+  return midi;
+}
+
+function midiToFrequency(midi){
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNoteSound(note){
+  if (!soundEnabled) return;
+  try {
+    const context = getAudioContext();
+    if (context.state === "suspended"){
+      context.resume().catch(() => {});
+    }
+
+    const osc = context.createOscillator();
+    const gain = context.createGain();
+    osc.type = "sine";
+    osc.frequency.value = midiToFrequency(noteToMidi(note));
+
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(0.12, context.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.9);
+
+    osc.connect(gain);
+    gain.connect(context.destination);
+    osc.start();
+    osc.stop(context.currentTime + 1);
+  } catch (error) {
+    // אם הדפדפן חוסם צליל אוטומטי, פשוט מתעלמים.
+  }
+}
+
 // ======== מנוע המשחק ========
 function pickNextNote(){
   // רנדומלי פשוט; אפשר להוסיף משקל לפי טעויות בעתיד
@@ -272,6 +328,7 @@ function setMessage(text, kind){
 function startQuestion(){
   current = pickNextNote();
   showNote(current);
+  playNoteSound(current);
   questionStartMs = performance.now();
   el.answer.value = "";
   el.answer.focus();
@@ -339,7 +396,7 @@ function skipQuestion(){
 
   // ויתור: נספור כ"שאלה הוחלפה" בלי זמן תגובה (או אפשר למדוד גם כאן)
   recordEvent("skip", current, null);
-  setMessage("הוחלף. (ויתרת על השאלה הזו)", null);
+  setMessage("דילגת. (ויתרת על השאלה הזו)", null);
 
   setTimeout(() => {
     lock = false;
@@ -358,6 +415,18 @@ function endGame(){
 }
 
 // ======== אירועים ========
+soundEnabled = localStorage.getItem("bassClef:soundEnabled") === "true";
+if (el.soundToggle){
+  el.soundToggle.checked = soundEnabled;
+  el.soundToggle.addEventListener("change", () => {
+    soundEnabled = el.soundToggle.checked;
+    localStorage.setItem("bassClef:soundEnabled", String(soundEnabled));
+    if (soundEnabled && current){
+      playNoteSound(current);
+    }
+  });
+}
+
 el.checkBtn.addEventListener("click", checkAnswer);
 el.skipBtn.addEventListener("click", skipQuestion);
 el.endBtn.addEventListener("click", endGame);
