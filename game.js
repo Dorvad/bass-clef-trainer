@@ -1,260 +1,379 @@
-// -----------------------------
-// Bass Clef Trainer — Game Logic
-// -----------------------------
-
-const SESSION_KEY = "bassClefSession_v1";
-
-// Staff geometry (based on SVG in index.html)
-const STAFF = {
-  yTop: 95,
-  step: 12.5, // half-step between line/space visually
-  noteX: 590,
-  accX: 520,
-  ledgerLeft: 565,
-  ledgerRight: 615,
-  ledgerLen: 60
+// ======== הגדרות ========
+// מיפוי שמות עבריים "קנוניים" לשבעה צלילים בסיסיים
+const NOTE_HE = {
+  C: "דו",
+  D: "רה",
+  E: "מי",
+  F: "פה",
+  G: "סול",
+  A: "לה",
+  B: "סי",
 };
 
-// Notes range (E2..C4 is a comfortable "beginner" bass-clef span)
-const NOTES = [
-  // MIDI-ish ordering not needed; we map by staff index
-  // We'll represent each as: { id, letter, octave, staffIndex, accidental: "natural"|"flat"|"sharp" }
-];
-
-// Build diatonic notes from E2 (bottom line) up to C4 (2 ledger lines above)
-const diatonic = [
-  // letter, octave
-  ["E",2],["F",2],["G",2],["A",2],["B",2],["C",3],["D",3],
-  ["E",3],["F",3],["G",3],["A",3],["B",3],["C",4]
-];
-
-// staffIndex: 0 = bottom line (E2), 1 = space (F2), ..., 8 = top line (A3), ...
-// Our y uses: y = lineY(bottom line) - staffIndex*step
-const bottomLineY = 195;
-
-diatonic.forEach((d, i) => {
-  NOTES.push({
-    id: `${d[0]}${d[1]}`,
-    letter: d[0],
-    octave: d[1],
-    staffIndex: i, // each diatonic step is one line/space -> step
-    accidental: "natural"
-  });
-});
-
-// optionally include accidentals for practice
-const ACCIDENTAL_POOL = ["natural","natural","natural","flat","sharp"]; // weighted towards naturals
-
-// Hebrew mapping
-const HEB = {
-  C: ["דו"],
-  D: ["רה"],
-  E: ["מי"],
-  F: ["פה","פא"],
-  G: ["סול"],
-  A: ["לה"],
-  B: ["סי"]
+const ACC_HE = {
+  natural: "",
+  flat: "במול",
+  sharp: "דיאז",
 };
 
-const ACC_HEB = {
-  flat: ["במול"],
-  sharp: ["דיאז"],
-  natural: [""]
-};
+// טווח מומלץ למפתח פה למתחילים (C2..C4 למשל) — אפשר להרחיב.
+// בחרתי טווח שמצריך גם קווי עזר מעט, כדי שזה יהיה "אמיתי" לצ'לו.
+const NOTE_POOL = buildPool([
+  // [pitch, accidental] accidental: "natural" | "flat" | "sharp"
+  ["C2","natural"], ["D2","natural"], ["E2","natural"], ["F2","natural"], ["G2","natural"], ["A2","natural"], ["B2","natural"],
+  ["C3","natural"], ["D3","natural"], ["E3","natural"], ["F3","natural"], ["G3","natural"], ["A3","natural"], ["B3","natural"],
+  ["C4","natural"], ["D4","natural"], ["E4","natural"], ["F4","natural"], ["G4","natural"],
+  // קצת במולים/דיאזים נפוצים
+  ["E2","flat"], ["B2","flat"], ["F2","sharp"], ["C3","sharp"], ["G3","sharp"], ["D3","flat"],
+]);
 
-const els = {
-  noteG: document.getElementById("noteG"),
+// ======== DOM ========
+const el = {
+  answer: document.getElementById("answer"),
+  checkBtn: document.getElementById("checkBtn"),
+  skipBtn: document.getElementById("skipBtn"),
+  endBtn: document.getElementById("endBtn"),
+  msg: document.getElementById("msg"),
+  answeredCount: document.getElementById("answeredCount"),
+  wrongCount: document.getElementById("wrongCount"),
+
+  noteGroup: document.getElementById("note"),
   noteHead: document.getElementById("noteHead"),
   stem: document.getElementById("stem"),
   ledgers: document.getElementById("ledgers"),
   acc: document.getElementById("acc"),
-
-  answer: document.getElementById("answer"),
-  checkBtn: document.getElementById("checkBtn"),
-  skipBtn: document.getElementById("skipBtn"),
-  finishBtn: document.getElementById("finishBtn"),
-  msg: document.getElementById("msg"),
-
-  answered: document.getElementById("answered"),
-  streak: document.getElementById("streak"),
+  flash: document.getElementById("successFlash"),
 };
 
-let state = {
+// ======== מצב משחק ========
+const session = {
+  id: cryptoRandomId(),
   startedAt: Date.now(),
-  current: null,
-  questionStartedAt: null,
-  answeredCount: 0,
-  streak: 0,
-  attemptsOnCurrent: 0,
-  history: [] // {noteId, displayName, correctName, ms, accidental, octave, letter}
+  events: [], // כל אירוע תשובה נכונה/ויתור
+  wrongAttempts: 0,
+  answered: 0,
 };
 
-function normalizeHeb(str){
-  if(!str) return "";
-  return str
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[״"]/g, "")
-    .replace(/[׳']/g, "")
-    .replace(/[–—-]/g, " ")
-    .replace(/,+/g, " ")
-    .trim();
+let current = null;          // note object
+let questionStartMs = 0;     // למדידת זמן מענה
+let lock = false;
+
+// ======== עזרי מוזיקה ========
+
+// בניית מאגר אובייקטים
+function buildPool(list){
+  return list.map(([p, accidental]) => makeNote(p, accidental));
 }
 
-function buildAcceptedAnswers(note){
-  const base = HEB[note.letter] || [];
-  const accWord = (note.accidental === "flat") ? "במול" :
-                  (note.accidental === "sharp") ? "דיאז" : "";
-
-  const accepted = new Set();
-
-  // Base name alone (e.g., "רה")
-  base.forEach(b => accepted.add(normalizeHeb(b)));
-
-  // With accidental (e.g., "רה במול")
-  if(accWord){
-    base.forEach(b => accepted.add(normalizeHeb(`${b} ${accWord}`)));
-    // Allow "במול רה" style too
-    base.forEach(b => accepted.add(normalizeHeb(`${accWord} ${b}`)));
-  }
-
-  // Allow common alternative for F: פא/פה handled in base
-  // Also allow omitting spaces (rare but friendly)
-  const expanded = Array.from(accepted);
-  expanded.forEach(a => accepted.add(a.replace(/\s/g,"")));
-
-  return Array.from(accepted);
-}
-
-function noteDisplayName(note){
-  const base = (HEB[note.letter] || ["?"])[0];
-  if(note.accidental === "flat") return `${base} במול`;
-  if(note.accidental === "sharp") return `${base} דיאז`;
-  return base;
-}
-
-function pickNewNote(){
-  const base = NOTES[Math.floor(Math.random() * NOTES.length)];
-  const accidental = ACCIDENTAL_POOL[Math.floor(Math.random() * ACCIDENTAL_POOL.length)];
-
-  // Avoid e.g. C4 sharp to keep it simple: limit accidentals in edges a bit
-  const isEdge = (base.letter === "E" && base.octave === 2) || (base.letter === "C" && base.octave === 4);
-  const finalAcc = isEdge && accidental !== "natural" ? "natural" : accidental;
-
+// pitch למשל "C3"
+function makeNote(pitch, accidental){
+  const letter = pitch[0];
+  const octave = parseInt(pitch.slice(1), 10);
   return {
-    ...base,
-    accidental: finalAcc
+    pitch,
+    letter,
+    octave,
+    accidental, // natural/flat/sharp
+    labelHe: heLabel(letter, accidental),
   };
 }
 
-function yForStaffIndex(staffIndex){
-  return bottomLineY - (staffIndex * STAFF.step);
+function heLabel(letter, accidental){
+  const base = NOTE_HE[letter];
+  const acc = ACC_HE[accidental] ? ` ${ACC_HE[accidental]}` : "";
+  return `${base}${acc}`.trim();
 }
 
-function clearLedgers(){
-  while(els.ledgers.firstChild) els.ledgers.removeChild(els.ledgers.firstChild);
+// כדי לצייר בגובה נכון: נשתמש ב"סטפים" של חצי-טון דיאטוני (line/space)
+// נגדיר נקודת ייחוס: E2 (שורה תחתונה+קו עזר? בפועל זה מתחת לחמשה)
+// אבל מה שחשוב: עקביות וקריאות. נשתמש בסולם דיאטוני לטרנספורמציה לתוך y.
+const staff = {
+  topLineY: 80,
+  step: 12.5,        // מרחק בין קו לרווח (חצי מרווח בין חמשות) — טיוב גרפי
+  // במפתח פה: הקו האמצעי הוא D3, קו תחתון G2, קו עליון A3.
+  // נשתמש במיפוי "דיאטוני" לסטפ-אינדקס סביב D3 (line3).
+};
+
+// מחזיר "אינדקס דיאטוני" ביחידות של קו/רווח
+// נבחר D3 (קו אמצעי) = index 0
+function diatonicIndex(letter, octave){
+  // סדר אותיות דיאטוני
+  const order = ["C","D","E","F","G","A","B"];
+  // מחשבים כמה צעדים דיאטוניים מ-D3
+  const baseOct = 3;
+  const baseLetter = "D";
+
+  const basePos = baseOct * 7 + order.indexOf(baseLetter);
+  const pos = octave * 7 + order.indexOf(letter);
+  return pos - basePos; // 0 ב-D3, חיובי כלפי מעלה
 }
 
-function addLedgerAt(y){
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  line.setAttribute("x1", STAFF.ledgerLeft);
-  line.setAttribute("x2", STAFF.ledgerRight);
-  line.setAttribute("y1", y);
-  line.setAttribute("y2", y);
-  els.ledgers.appendChild(line);
+// y עבור תו: כל אינדקס דיאטוני מעלה = יורד ב-step
+function yForNote(note){
+  const idx = diatonicIndex(note.letter, note.octave);
+  // קו אמצעי (D3) נמצא ב-y=130 (הקו השלישי מתוך 5: 80,105,130,155,180)
+  const middleLineY = 130;
+  return middleLineY - idx * staff.step;
 }
 
-function updateLedgersFor(y){
-  // Ledger lines occur when note is below bottom line (y > 195) or above top line (y < 95)
-  // Our staff lines at: 95,120,145,170,195 (top to bottom)
-  // Below: add ledger for y=220 (C2 line is outside our range), but our range starts at E2 on bottom line so usually none below.
-  // Above top: A3 top line. B3 space above, C4 ledger line above, etc.
-  clearLedgers();
+// קווי עזר: כל קו/רווח מעבר לחמשה דורש ledger
+function renderLedgers(y){
+  // קווי החמשה: 80..180
+  const minY = 80;
+  const maxY = 180;
 
-  // Determine nearest "line positions" outside staff for ledger logic.
-  // We'll compute line Ys extending beyond staff: every 2*step (because line-to-line distance is 2 half-steps)
-  const lineYs = [95,120,145,170,195];
+  el.ledgers.innerHTML = "";
 
-  const topLine = 95;
-  const bottomLine = 195;
+  // אם התו בתוך החמשה – אין
+  if (y >= minY && y <= maxY) return;
 
-  // Above staff: y < topLine
-  if(y < topLine){
-    // Ledger lines at: topLine - 2*step, topLine - 4*step, ...
-    for(let ly = topLine - 2*STAFF.step; ly >= y - 0.01; ly -= 2*STAFF.step){
-      addLedgerAt(ly);
-    }
+  // נוסיף קווי עזר בכל "קו" (כל שני steps) שמחוץ לתחום
+  // head נמצא על קו/רווח; ledger lines צריכים להיות בקווי חמשה דמיוניים
+  // נחשב את ה-y הקרוב לקווים (כל 2*step)
+  const lineSpacing = staff.step * 2;
+
+  function addLedgerLine(yy){
+    const x1 = 590, x2 = 650; // סביב ראש התו
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y1", yy);
+    line.setAttribute("y2", yy);
+    el.ledgers.appendChild(line);
   }
 
-  // Below staff: y > bottomLine
-  if(y > bottomLine){
-    for(let ly = bottomLine + 2*STAFF.step; ly <= y + 0.01; ly += 2*STAFF.step){
-      addLedgerAt(ly);
+  if (y < minY){
+    // מעל: נוסיף קווים מ-minY כלפי מעלה
+    // קו עליון הוא 80. הקו הבא מעליו הוא 80 - lineSpacing וכו'
+    let yy = minY - lineSpacing;
+    while (y <= yy + staff.step) { // עד שנכסה את ראש התו
+      addLedgerLine(yy);
+      yy -= lineSpacing;
+    }
+  } else if (y > maxY){
+    // מתחת: נוסיף קווים מ-maxY כלפי מטה
+    let yy = maxY + lineSpacing;
+    while (y >= yy - staff.step) {
+      addLedgerLine(yy);
+      yy += lineSpacing;
     }
   }
 }
 
-function setAccidentalSymbol(accidental){
-  if(accidental === "flat") els.acc.textContent = "♭";
-  else if(accidental === "sharp") els.acc.textContent = "♯";
-  else els.acc.textContent = "";
+function setAccidental(note, y){
+  // מציבים סימן ליד התו
+  // תווים במול/דיאז: ♭ / ♯
+  let sym = "";
+  if (note.accidental === "flat") sym = "♭";
+  if (note.accidental === "sharp") sym = "♯";
+
+  el.acc.textContent = sym;
+  if (!sym){
+    el.acc.setAttribute("x", 0);
+    el.acc.setAttribute("y", 0);
+    return;
+  }
+  el.acc.setAttribute("x", 560);
+  el.acc.setAttribute("y", y + 12);
 }
 
-function animateNote(){
-  // restart animation
-  els.noteG.classList.remove("noteAnim");
-  // force reflow
-  void els.noteG.getBBox();
-  els.noteG.classList.add("noteAnim");
+// ======== נורמליזציה של תשובת משתמש ========
+function normalizeHebrewInput(s){
+  if (!s) return "";
+  let t = s.trim().toLowerCase();
+
+  // מסיר ניקוד/תווים מיוחדים בסיסיים
+  t = t.replace(/[“”"'.،،,]/g, " ");
+  t = t.replace(/\s+/g, " ").trim();
+
+  // המרות נפוצות
+  t = t.replace(/♭/g, " במול ");
+  t = t.replace(/flat/g, " במול ");
+  t = t.replace(/bemol/g, " במול ");
+  t = t.replace(/במול/g, " במול ");
+
+  t = t.replace(/♯/g, " דיאז ");
+  t = t.replace(/#/g, " דיאז ");
+  t = t.replace(/sharp/g, " דיאז ");
+  t = t.replace(/דיאז/g, " דיאז ");
+
+  t = t.replace(/\s+/g, " ").trim();
+  return t;
 }
 
-function showMessage(text, kind){
-  els.msg.textContent = text || "";
-  els.msg.classList.remove("good","bad");
-  if(kind === "good") els.msg.classList.add("good");
-  if(kind === "bad") els.msg.classList.add("bad");
+function acceptableAnswers(note){
+  const base = NOTE_HE[note.letter];
+  const acc = ACC_HE[note.accidental]; // "" | "במול" | "דיאז"
+
+  const a = [];
+  if (!acc) {
+    a.push(`${base}`);
+  } else {
+    a.push(`${base} ${acc}`);
+    // גם בלי רווח/עם מקף
+    a.push(`${base}${acc}`);
+    a.push(`${base}-${acc}`);
+  }
+
+  // תמיכה גם בכתיב "סי במול" מול "סי-במול" וכו
+  return new Set(a.map(normalizeHebrewInput));
+}
+
+// ======== מנוע המשחק ========
+function pickNextNote(){
+  // רנדומלי פשוט; אפשר להוסיף משקל לפי טעויות בעתיד
+  const n = NOTE_POOL[Math.floor(Math.random() * NOTE_POOL.length)];
+  return n;
+}
+
+function animateNewNote(){
+  el.noteGroup.classList.add("note-fade");
+  setTimeout(() => {
+    el.noteGroup.classList.remove("note-fade");
+    el.noteGroup.classList.add("note-pop");
+    setTimeout(() => el.noteGroup.classList.remove("note-pop"), 180);
+  }, 150);
+}
+
+function showNote(note){
+  const y = yForNote(note);
+
+  // ראש התו
+  el.noteHead.setAttribute("cy", y);
+
+  // גבעול: אם תו גבוה, גבעול יורד; אם נמוך, עולה.
+  // (לא חייב מושלם, אבל זה מרגיש מוזיקלי)
+  const mid = 130;
+  const stemUp = y >= mid; // נמוך => גבעול עולה
+  if (stemUp){
+    el.stem.setAttribute("x1", 638);
+    el.stem.setAttribute("x2", 638);
+    el.stem.setAttribute("y1", y);
+    el.stem.setAttribute("y2", y - 78);
+  } else {
+    // גבעול יורד משמאל
+    el.stem.setAttribute("x1", 602);
+    el.stem.setAttribute("x2", 602);
+    el.stem.setAttribute("y1", y);
+    el.stem.setAttribute("y2", y + 78);
+  }
+
+  renderLedgers(y);
+  setAccidental(note, y);
+  animateNewNote();
+}
+
+function setMessage(text, kind){
+  el.msg.textContent = text || "";
+  el.msg.classList.remove("ok","bad");
+  if (kind) el.msg.classList.add(kind);
 }
 
 function startQuestion(){
-  state.current = pickNewNote();
-  state.questionStartedAt = performance.now();
-  state.attemptsOnCurrent = 0;
-
-  const y = yForStaffIndex(state.current.staffIndex);
-  els.noteHead.setAttribute("cy", y);
-  // Stem direction: for notes above middle line, stem down; else up
-  // middle line is 145
-  if(y <= 145){
-    // stem down
-    els.stem.setAttribute("x1", 572);
-    els.stem.setAttribute("x2", 572);
-    els.stem.setAttribute("y1", y);
-    els.stem.setAttribute("y2", y + 78);
-  } else {
-    // stem up
-    els.stem.setAttribute("x1", 608);
-    els.stem.setAttribute("x2", 608);
-    els.stem.setAttribute("y1", y);
-    els.stem.setAttribute("y2", y - 78);
-  }
-
-  setAccidentalSymbol(state.current.accidental);
-  updateLedgersFor(y);
-  animateNote();
-
-  els.answer.value = "";
-  els.answer.focus();
-  showMessage("הקלד את שם התו בעברית ואז לחץ “בדוק”.", "");
+  current = pickNextNote();
+  showNote(current);
+  questionStartMs = performance.now();
+  el.answer.value = "";
+  el.answer.focus();
+  setMessage("", null);
 }
 
-function commitCorrect(){
-  const ms = Math.max(0, Math.round(performance.now() - state.questionStartedAt));
-  const correctName = noteDisplayName(state.current);
+function flashSuccess(){
+  el.flash.classList.add("flash-on");
+  setTimeout(() => el.flash.classList.remove("flash-on"), 260);
+}
 
-  state.answeredCount += 1;
-  state.streak += 1;
+function recordEvent(type, note, ms, extra={}){
+  session.events.push({
+    type, // "correct" | "skip"
+    pitch: note.pitch,
+    letter: note.letter,
+    accidental: note.accidental,
+    labelHe: note.labelHe,
+    timeMs: ms ?? null,
+    at: Date.now(),
+    ...extra,
+  });
+}
 
-  state.history.push({
-    noteId: state.current.id,
-    letter: state.current
+function updateCounters(){
+  el.answeredCount.textContent = String(session.answered);
+  el.wrongCount.textContent = String(session.wrongAttempts);
+}
+
+function checkAnswer(){
+  if (lock || !current) return;
+
+  const user = normalizeHebrewInput(el.answer.value);
+  const okSet = acceptableAnswers(current);
+
+  if (okSet.has(user)){
+    lock = true;
+
+    const ms = Math.max(0, Math.round(performance.now() - questionStartMs));
+    session.answered += 1;
+    recordEvent("correct", current, ms);
+    updateCounters();
+
+    flashSuccess();
+    setMessage("נכון ✅ ממשיכים…", "ok");
+
+    // מעבר אוטומטי לשאלה הבאה
+    setTimeout(() => {
+      lock = false;
+      startQuestion();
+    }, 420);
+
+  } else {
+    session.wrongAttempts += 1;
+    updateCounters();
+    setMessage("לא בדיוק. נסה/י שוב 🙂", "bad");
+    // לא מתקדמים עד שתהיה תשובה נכונה
+    el.answer.select();
+  }
+}
+
+function skipQuestion(){
+  if (lock || !current) return;
+  lock = true;
+
+  // ויתור: נספור כ"שאלה הוחלפה" בלי זמן תגובה (או אפשר למדוד גם כאן)
+  recordEvent("skip", current, null);
+  setMessage("הוחלף. (ויתרת על השאלה הזו)", null);
+
+  setTimeout(() => {
+    lock = false;
+    startQuestion();
+  }, 260);
+}
+
+function endGame(){
+  // שומרים סשן ללוקאל-סטורג' ומעבירים לעמוד סיכום
+  const payload = {
+    ...session,
+    endedAt: Date.now(),
+  };
+  localStorage.setItem("bassClefSession:last", JSON.stringify(payload));
+  window.location.href = "summary.html";
+}
+
+// ======== אירועים ========
+el.checkBtn.addEventListener("click", checkAnswer);
+el.skipBtn.addEventListener("click", skipQuestion);
+el.endBtn.addEventListener("click", endGame);
+
+el.answer.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") checkAnswer();
+});
+
+// התחלה
+updateCounters();
+startQuestion();
+
+// ======== utils ========
+function cryptoRandomId(){
+  // מזהה קצר
+  const a = new Uint8Array(8);
+  crypto.getRandomValues(a);
+  return Array.from(a).map(x=>x.toString(16).padStart(2,"0")).join("");
+}
