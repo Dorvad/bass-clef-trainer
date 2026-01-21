@@ -21,11 +21,7 @@
       </div>
 
       <div class="controls">
-        <label class="switch">
-          <input id="soundToggle" type="checkbox" />
-          <span class="slider"></span>
-          <span class="switch-text">נגן צליל בתחילת השאלה</span>
-        </label>
+        <a class="btn btn-ghost" href="settings.html">הגדרות</a>
         <button id="endBtn" class="btn btn-ghost" type="button">סיים משחק</button>
       </div>
     </header>
@@ -81,6 +77,7 @@
             autocapitalize="off"
             spellcheck="false"
           />
+          <button id="playBtn" class="btn btn-ghost" type="button" title="נגן את התו הנוכחי">נגן תו</button>
           <button id="checkBtn" class="btn btn-primary" type="button">בדוק</button>
           <button id="skipBtn" class="btn btn-ghost" type="button" title="רק אם רוצים להחליף בלי לענות (ייספר כוויתור)">דלג</button>
         </div>
@@ -90,6 +87,7 @@
         <div class="meta">
           <div class="pill">נענו: <span id="answeredCount">0</span></div>
           <div class="pill">טעויות: <span id="wrongCount">0</span></div>
+          <div class="pill timer hidden" id="timerPill">זמן: <span id="timerValue">0.0</span> שנ׳</div>
         </div>
 
         <p class="hint">

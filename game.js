@@ -27,16 +27,27 @@ const NOTE_POOL = buildPool([
   ["E2","flat"], ["B2","flat"], ["F2","sharp"], ["C3","sharp"], ["G3","sharp"], ["D3","flat"],
 ]);
 
+const FILTER_STORAGE_KEY = "bassClef:accidentals";
+const TIMER_STORAGE_KEY = "bassClef:showTimer";
+const DEFAULT_ACCIDENTAL_FILTERS = {
+  natural: true,
+  flat: true,
+  sharp: true,
+};
+
 // ======== DOM ========
 const el = {
   answer: document.getElementById("answer"),
   checkBtn: document.getElementById("checkBtn"),
+  playBtn: document.getElementById("playBtn"),
   skipBtn: document.getElementById("skipBtn"),
   endBtn: document.getElementById("endBtn"),
   soundToggle: document.getElementById("soundToggle"),
   msg: document.getElementById("msg"),
   answeredCount: document.getElementById("answeredCount"),
   wrongCount: document.getElementById("wrongCount"),
+  timerPill: document.getElementById("timerPill"),
+  timerValue: document.getElementById("timerValue"),
 
   noteGroup: document.getElementById("note"),
   noteHead: document.getElementById("noteHead"),
@@ -60,6 +71,8 @@ let questionStartMs = 0;     // למדידת זמן מענה
 let lock = false;
 let audioContext = null;
 let soundEnabled = false;
+let showTimerEnabled = false;
+let timerIntervalId = null;
 
 // ======== עזרי מוזיקה ========
 
@@ -222,6 +235,31 @@ function acceptableAnswers(note){
   return new Set(a.map(normalizeHebrewInput));
 }
 
+function getAccidentalFilters(){
+  const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+  if (!raw) return { ...DEFAULT_ACCIDENTAL_FILTERS };
+  try {
+    const parsed = JSON.parse(raw);
+    const normalized = {
+      natural: Boolean(parsed.natural),
+      flat: Boolean(parsed.flat),
+      sharp: Boolean(parsed.sharp),
+    };
+    if (!normalized.natural && !normalized.flat && !normalized.sharp){
+      return { ...DEFAULT_ACCIDENTAL_FILTERS };
+    }
+    return normalized;
+  } catch (error) {
+    return { ...DEFAULT_ACCIDENTAL_FILTERS };
+  }
+}
+
+function getFilteredPool(){
+  const filters = getAccidentalFilters();
+  const filtered = NOTE_POOL.filter((note) => filters[note.accidental]);
+  return filtered.length ? filtered : NOTE_POOL;
+}
+
 // ======== סאונד ========
 function getAudioContext(){
   if (!audioContext){
@@ -249,8 +287,10 @@ function midiToFrequency(midi){
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-function playNoteSound(note){
-  if (!soundEnabled) return;
+function playNoteSound(note, options = {}){
+  if (!note) return;
+  const { force = false } = options;
+  if (!soundEnabled && !force) return;
   try {
     const context = getAudioContext();
     if (context.state === "suspended"){
@@ -275,10 +315,32 @@ function playNoteSound(note){
   }
 }
 
+function setTimerVisibility(){
+  if (!el.timerPill) return;
+  if (showTimerEnabled){
+    el.timerPill.classList.remove("hidden");
+  } else {
+    el.timerPill.classList.add("hidden");
+  }
+}
+
+function updateTimerDisplay(){
+  if (!showTimerEnabled || !el.timerValue) return;
+  const elapsed = Math.max(0, (performance.now() - questionStartMs) / 1000);
+  el.timerValue.textContent = elapsed.toFixed(1);
+}
+
+function startTimer(){
+  if (timerIntervalId) clearInterval(timerIntervalId);
+  if (!showTimerEnabled) return;
+  timerIntervalId = setInterval(updateTimerDisplay, 200);
+}
+
 // ======== מנוע המשחק ========
 function pickNextNote(){
   // רנדומלי פשוט; אפשר להוסיף משקל לפי טעויות בעתיד
-  const n = NOTE_POOL[Math.floor(Math.random() * NOTE_POOL.length)];
+  const pool = getFilteredPool();
+  const n = pool[Math.floor(Math.random() * pool.length)];
   return n;
 }
 
@@ -330,6 +392,7 @@ function startQuestion(){
   showNote(current);
   playNoteSound(current);
   questionStartMs = performance.now();
+  updateTimerDisplay();
   el.answer.value = "";
   el.answer.focus();
   setMessage("", null);
@@ -416,6 +479,9 @@ function endGame(){
 
 // ======== אירועים ========
 soundEnabled = localStorage.getItem("bassClef:soundEnabled") === "true";
+showTimerEnabled = localStorage.getItem(TIMER_STORAGE_KEY) === "true";
+setTimerVisibility();
+startTimer();
 if (el.soundToggle){
   el.soundToggle.checked = soundEnabled;
   el.soundToggle.addEventListener("change", () => {
@@ -428,6 +494,9 @@ if (el.soundToggle){
 }
 
 el.checkBtn.addEventListener("click", checkAnswer);
+if (el.playBtn){
+  el.playBtn.addEventListener("click", () => playNoteSound(current, { force: true }));
+}
 el.skipBtn.addEventListener("click", skipQuestion);
 el.endBtn.addEventListener("click", endGame);
 
